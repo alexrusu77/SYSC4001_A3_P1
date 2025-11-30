@@ -29,6 +29,9 @@ std::tuple<std::string /* add std::string for bonus mark */ > run_simulation(std
     unsigned int current_time = 0;
     PCB running;
 
+    const unsigned int TIME_QUANTUM = 100;
+    unsigned int time_in_quantum = 0;
+
     //Initialize an empty running process
     idle_CPU(running);
 
@@ -63,11 +66,83 @@ std::tuple<std::string /* add std::string for bonus mark */ > run_simulation(std
 
         ///////////////////////MANAGE WAIT QUEUE/////////////////////////
         //This mainly involves keeping track of how long a process must remain in the ready queue
+        
+        for (int i = 0; i < static_cast<int>(wait_queue.size()); ++i) {
+            PCB &p = wait_queue[i];
+            p.io_duration -= 1;
 
+            if (p.io_duration <= 0) {
+                execution_status += print_exec_status(current_time, p.PID, WAITING, READY);
+
+                p.state = READY;
+                ready_queue.push_back(p);
+                sync_queue(job_list, p);
+
+                wait_queue.erase(wait_queue.begin() + i);
+                --i;
+            }
+        }
         /////////////////////////////////////////////////////////////////
 
         //////////////////////////SCHEDULER//////////////////////////////
-        FCFS(ready_queue); //example of FCFS is shown here
+        // FCFS(ready_queue); //example of FCFS is shown here
+        
+        //Schedule Process
+
+        if (running.PID == -1 && !ready_queue.empty()) {
+            run_process(running, job_list, ready_queue, current_time);
+            execution_status += print_exec_status(current_time, running.PID, READY, RUNNING);
+            time_in_quantum = 0;
+        }
+
+        if (running.PID != -1) {
+            running.remaining_time -= 1;
+            time_in_quantum += 1;
+
+            int time_run = running.processing_time - running.remaining_time;
+            bool handled_event = false;
+
+            if (running.io_freq != 0 && time_run % running.io_freq == 0 && running.remaining_time > 0) {
+                execution_status += print_exec_status(current_time + 1, running.PID, RUNNING, WAITING);
+                
+                running.state = WAITING;
+
+                auto it = std::find_if(list_processes.begin(), list_processes.end(), [&](const PCB &proc) {return proc.PID == running.PID;});
+
+                if (it != list_processes.end()) {
+                    running.io_duration = it->io_duration;
+                }
+
+                wait_queue.push_back(running);
+                sync_queue(job_list, running);
+
+                idle_CPU(running);
+                time_in_quantum = 0;
+                handled_event = true;
+            }
+            else if (running.remaining_time == 0) {
+                execution_status += print_exec_status(current_time + 1, running.PID, RUNNING, TERMINATED);
+
+                terminate_process(running, job_list);
+                idle_CPU(running);
+                time_in_quantum = 0;
+                handled_event = true;
+            }
+
+            if (!handled_event && time_in_quantum == TIME_QUANTUM) {
+                execution_status += print_exec_status(current_time + 1, running.PID, RUNNING, READY);
+
+                running.state = READY;
+                ready_queue.push_back(running);
+                sync_queue(job_list, running);
+
+                idle_CPU(running);
+                time_in_quantum = 0;
+            }
+
+        }
+        current_time++;
+        
         /////////////////////////////////////////////////////////////////
 
     }
