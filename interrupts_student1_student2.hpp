@@ -1,9 +1,4 @@
-/**
- * @file interrupts.hpp
- * @author Sasisekhar Govind
- * @brief template main.cpp file for Assignment 3 Part 1 of SYSC4001
- * 
- */
+
 
 #ifndef INTERRUPTS_HPP_
 #define INTERRUPTS_HPP_
@@ -65,6 +60,7 @@ struct PCB{
     enum states     state;
     unsigned int    io_freq;
     unsigned int    io_duration;
+    unsigned int    io_complete_time;
 };
 
 //------------------------------------HELPER FUNCTIONS FOR THE SIMULATOR------------------------------
@@ -274,14 +270,12 @@ PCB add_process(std::vector<std::string> tokens) {
 }
 
 //Returns true if all processes in the queue have terminated
-bool all_process_terminated(std::vector<PCB> processes) {
-
-    for(auto process : processes) {
-        if(process.state != TERMINATED) {
+bool all_process_terminated(const std::vector<PCB>& processes) {
+    for(const auto& p : processes) {
+        if (p.state == READY || p.state == RUNNING || p.state == WAITING) {
             return false;
         }
     }
-
     return true;
 }
 
@@ -295,12 +289,14 @@ void terminate_process(PCB &running, std::vector<PCB> &job_queue) {
 
 //set the process in the ready queue to runnning
 void run_process(PCB &running, std::vector<PCB> &job_queue, std::vector<PCB> &ready_queue, unsigned int current_time) {
-    running = ready_queue.back();
-    ready_queue.pop_back();
+    running = ready_queue.front();
+    ready_queue.erase(ready_queue.begin());
     running.start_time = current_time;
     running.state = RUNNING;
     sync_queue(job_queue, running);
 }
+
+
 
 void idle_CPU(PCB &running) {
     running.start_time = 0;
