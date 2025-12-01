@@ -104,11 +104,25 @@ std::tuple<std::string /* add std::string for bonus mark */ > run_simulation(std
         //////////////////////////SCHEDULER//////////////////////////////
         // FCFS(ready_queue); //example of FCFS is shown here
 
+        if (running.PID != -1 && !ready_queue.empty()) {
+            auto best = std::min_element(ready_queue.begin(), ready_queue.end(), [](const PCB &a, const PCB &b) {return a.PID < b.PID;});
+            
+            if (best != ready_queue.end() && best->PID < running.PID) {
+                execution_status += print_exec_status(current_time, running.PID, RUNNING, READY);
+
+                running.state = READY;
+                ready_queue.push_back(running);
+                sync_queue(job_list, running);
+
+                idle_CPU(running);
+                time_in_quantum = 0;
+            }
+        }
+
         if (running.PID == -1 && !ready_queue.empty()) {
             schedule_EP(ready_queue);
 
             run_process(running, job_list, ready_queue, current_time);
-            
             execution_status += print_exec_status(current_time, running.PID, READY, RUNNING);
             time_in_quantum = 0;
         }
