@@ -185,17 +185,13 @@ int main(int argc, char** argv)
         }
 
         auto new_process = add_process(input_tokens);
-        std::cout << "Read process PID=" << new_process.PID << std::endl;
+        
         list_process.push_back(new_process);
     }
 
     input_file.close();
 
-    std::cout << "Number of processes read: " << list_process.size() << std::endl;
-    for (auto &p : list_process) {
-        std::cout << "PID=" << p.PID << ", arrival=" << p.arrival_time
-                  << ", processing_time=" << p.processing_time << std::endl;
-    }
+
 
     ////////////////////////// RUN SIMULATION ////////////////////////
     //With the list of processes, run the simulation
